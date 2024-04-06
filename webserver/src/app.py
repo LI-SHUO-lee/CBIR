@@ -28,11 +28,11 @@ from tensorflow.python.keras.models import load_model
 from diskcache import Cache
 import shutil
 
-config = tf.ConfigProto()
+config = tf.compat.v1.ConfigProto()
 config.gpu_options.allow_growth = True
 config.gpu_options.per_process_gpu_memory_fraction = 0.5
 global sess
-sess = tf.Session(config=config)
+sess = tf.compat.v1.Session(config=config)
 set_session(sess)
 
 app = Flask(__name__)
@@ -43,9 +43,10 @@ CORS(app)
 
 model = None
 
+
 def load_model():
     global graph
-    graph = tf.get_default_graph()
+    graph = tf.compat.v1.get_default_graph()
 
     global model
     model = VGG16(weights='imagenet',
@@ -133,15 +134,14 @@ def do_search_api():
         filename = secure_filename(file.filename)
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(file_path)
-        res_id,res_distance = do_search(table_name, file_path, top_k, model, graph, sess)
+        res_id, res_distance = do_search(table_name, file_path, top_k, model, graph, sess)
         if isinstance(res_id, str):
             return res_id
-        res_img = [request.url_root +"data/" + x for x in res_id]
-        res = dict(zip(res_img,res_distance))
-        res = sorted(res.items(),key=lambda item:item[1])
+        res_img = [request.url_root + "data/" + x for x in res_id]
+        res = dict(zip(res_img, res_distance))
+        res = sorted(res.items(), key=lambda item: item[1])
         return jsonify(res), 200
     return "not found", 400
-
 
 
 if __name__ == "__main__":
