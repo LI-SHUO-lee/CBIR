@@ -3,10 +3,11 @@ import time
 from common.config import DEFAULT_TABLE
 from common.const import default_cache_dir
 # from common.config import DATA_PATH as database_path
-from encoder.encode import feature_extract
+from encoder.encode import feature_extract, feature_extract_with_thread_pool, feature_extract_with_process_pool
 from preprocessor.vggnet import VGGNet
 from diskcache import Cache
-from indexer.index import milvus_client, create_table, insert_vectors, delete_table, search_vectors, create_index,has_table
+from indexer.index import milvus_client, create_table, insert_vectors, delete_table, search_vectors, create_index, \
+    has_table
 
 
 def do_train(table_name, database_path):
@@ -14,7 +15,11 @@ def do_train(table_name, database_path):
         table_name = DEFAULT_TABLE
     cache = Cache(default_cache_dir)
     try:
+        start = time.time()
         vectors, names = feature_extract(database_path, VGGNet())
+        # vectors, names = feature_extract_with_process_pool(database_path, VGGNet())
+        print(f'处理完返回的结果：vectors: {len(vectors)} and names:{len(names)}')
+        print(f'执行了{time.time() - start} seconds')
         index_client = milvus_client()
         # delete_table(index_client, table_name=table_name)
         # time.sleep(1)
@@ -33,5 +38,3 @@ def do_train(table_name, database_path):
     except Exception as e:
         logging.error(e)
         return "Error with {}".format(e)
-
-
