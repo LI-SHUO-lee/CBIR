@@ -9,7 +9,7 @@ from service.train import do_train
 from service.search import do_search
 from service.count import do_count
 from service.delete import do_delete
-from service.theardpool import thread_runner
+from service.theardpool import thread_runner, call_do_train
 from preprocessor.vggnet import vgg_extract_feat
 from indexer.index import milvus_client, create_table, insert_vectors, delete_table, search_vectors, create_index
 from service.search import query_name_from_ids
@@ -18,15 +18,15 @@ from flask import Flask, request, send_file, jsonify
 from flask_restful import reqparse
 from werkzeug.utils import secure_filename
 from keras.applications.vgg16 import VGG16
-from keras.applications.vgg16 import preprocess_input as preprocess_input_vgg
-from keras.preprocessing import image
-import numpy as np
-from numpy import linalg as LA
 import tensorflow as tf
 from tensorflow.python.keras.backend import set_session
-from tensorflow.python.keras.models import load_model
 from diskcache import Cache
 import shutil
+
+# 取消证书认证，因为linux上总是出问题，所以加配置
+import ssl
+
+ssl._create_default_https_context = ssl._create_unverified_context
 
 config = tf.compat.v1.ConfigProto()
 config.gpu_options.allow_growth = True
@@ -63,8 +63,10 @@ def do_train_api():
         parse_args()
     table_name = args['Table']
     file_path = args['File']
+    print(f'参数为--> Table:{table_name}, File: {file_path}')
     try:
         thread_runner(1, do_train, table_name, file_path)
+        # call_do_train(table_name, file_path)
         filenames = os.listdir(file_path)
         if not os.path.exists(DATA_PATH):
             os.mkdir(DATA_PATH)
@@ -146,4 +148,4 @@ def do_search_api():
 
 if __name__ == "__main__":
     load_model()
-    app.run(host="0.0.0.0")
+    app.run(host="0.0.0.0", port=5000)
