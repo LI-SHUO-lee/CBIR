@@ -1,9 +1,12 @@
+import os
+
 import numpy as np
 from keras.applications.vgg16 import VGG16
 from keras.applications.vgg16 import preprocess_input as preprocess_input_vgg
 from keras.preprocessing import image
 from numpy import linalg as LA
 from common.const import input_shape
+
 
 class VGGNet:
     def __init__(self):
@@ -17,6 +20,7 @@ class VGGNet:
         self.model_vgg.predict(np.zeros((1, 224, 224, 3)))
 
     def vgg_extract_feat(self, img_path):
+        print(f'process id: {os.getpid()} --> extract: {img_path}')
         img = image.load_img(img_path, target_size=(self.input_shape[0], self.input_shape[1]))
         img = image.img_to_array(img)
         img = np.expand_dims(img, axis=0)
@@ -25,6 +29,21 @@ class VGGNet:
         norm_feat = feat[0] / LA.norm(feat[0])
         norm_feat = [i.item() for i in norm_feat]
         return norm_feat
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        # 在序列化时排除 model_vgg 属性
+        del state['model_vgg']
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        # 重新加载 model_vgg 属性
+        self.model_vgg = VGG16(weights=self.weight,
+                               input_shape=(self.input_shape[0], self.input_shape[1], self.input_shape[2]),
+                               pooling=self.pooling,
+                               include_top=False)
+        self.model_vgg.predict(np.zeros((1, 224, 224, 3)))
 
 
 def vgg_extract_feat(img_path, model, graph, sess):
