@@ -28,11 +28,6 @@ from tensorflow.python.keras.models import load_model
 from diskcache import Cache
 import shutil
 
-# 取消证书认证，因为linux上总是出问题，所以加配置
-import ssl
-
-#ssl._create_default_https_context = ssl._create_unverified_context
-
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 config.gpu_options.per_process_gpu_memory_fraction = 0.5
@@ -47,7 +42,6 @@ app.config['JSON_SORT_KEYS'] = False
 CORS(app)
 
 model = None
-
 
 def load_model():
     global graph
@@ -68,10 +62,8 @@ def do_train_api():
         parse_args()
     table_name = args['Table']
     file_path = args['File']
-    print(f'参数为--> Table:{table_name}, File: {file_path}')
     try:
         thread_runner(1, do_train, table_name, file_path)
-        # call_do_train(table_name, file_path)
         filenames = os.listdir(file_path)
         if not os.path.exists(DATA_PATH):
             os.mkdir(DATA_PATH)
@@ -141,16 +133,17 @@ def do_search_api():
         filename = secure_filename(file.filename)
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(file_path)
-        res_id, res_distance = do_search(table_name, file_path, top_k, model, graph, sess)
+        res_id,res_distance = do_search(table_name, file_path, top_k, model, graph, sess)
         if isinstance(res_id, str):
             return res_id
-        res_img = [request.url_root + "data/" + x for x in res_id]
-        res = dict(zip(res_img, res_distance))
-        res = sorted(res.items(), key=lambda item: item[1])
+        res_img = [request.url_root +"data/" + x for x in res_id]
+        res = dict(zip(res_img,res_distance))
+        res = sorted(res.items(),key=lambda item:item[1])
         return jsonify(res), 200
     return "not found", 400
 
 
+
 if __name__ == "__main__":
     load_model()
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0")

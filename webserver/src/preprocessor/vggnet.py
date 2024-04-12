@@ -1,12 +1,9 @@
-import os
-
 import numpy as np
-from tensorflow.keras.applications.vgg16 import VGG16
-from tensorflow.keras.applications.vgg16 import preprocess_input as preprocess_input_vgg
-from tensorflow.keras.preprocessing import image
+from keras.applications.vgg16 import VGG16
+from keras.applications.vgg16 import preprocess_input as preprocess_input_vgg
+from keras.preprocessing import image
 from numpy import linalg as LA
 from common.const import input_shape
-
 
 class VGGNet:
     def __init__(self):
@@ -29,21 +26,6 @@ class VGGNet:
         norm_feat = [i.item() for i in norm_feat]
         return norm_feat
 
-    def __getstate__(self):
-        state = self.__dict__.copy()
-        # 在序列化时排除 model_vgg 属性
-        del state['model_vgg']
-        return state
-
-    def __setstate__(self, state):
-        self.__dict__.update(state)
-        # 重新加载 model_vgg 属性
-        self.model_vgg = VGG16(weights=self.weight,
-                               input_shape=(self.input_shape[0], self.input_shape[1], self.input_shape[2]),
-                               pooling=self.pooling,
-                               include_top=False)
-        self.model_vgg.predict(np.zeros((1, 224, 224, 3)))
-
 
 def vgg_extract_feat(img_path, model, graph, sess):
     with sess.as_default():
@@ -56,10 +38,3 @@ def vgg_extract_feat(img_path, model, graph, sess):
             norm_feat = feat[0] / LA.norm(feat[0])
             norm_feat = [i.item() for i in norm_feat]
             return norm_feat
-
-
-# if __name__ == '__main__':
-#     img_path = 'F:\\deep learning\\temp\\25.jpg'
-#     model = VGGNet()
-#     reesult = model.vgg_extract_feat(img_path)
-#     print(reesult)
