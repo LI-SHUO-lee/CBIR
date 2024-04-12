@@ -2,6 +2,8 @@ import concurrent.futures
 import os
 import threading, logging
 import multiprocessing
+import time
+
 import numpy as np
 from common.config import DATA_PATH as database_path
 from encoder.utils import get_imlist
@@ -86,3 +88,39 @@ def feature_extract_with_process_pool(database_path, model):
     except Exception as e:
         logging.error(e)
         return "multiple process: Error with {}".format(e)
+
+
+'''
+tensorflow 自带多线程处理
+'''
+import tensorflow as tf
+
+
+def parse_function(image_path, label):
+    # 读取和预处理图像
+    image = tf.io.read_file(image_path)
+    image = tf.image.decode_jpeg(image, channels=3)
+    image = tf.image.resize(image, [224, 224])  # 将图像调整为 VGG 模型所需的大小
+    image = tf.keras.applications.vgg16.preprocess_input(image)  # 预处理图像
+    return image, label
+
+
+def tf_dataset_function(database_path):
+    img_list = get_imlist(database_path)
+    names = [os.path.split(img_path)[1] for img_path in img_list]
+    dataset = tf.data.Dataset.from_tensor_slices((img_list, names))
+    dataset = dataset.map(parse_function, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    dataset = dataset.batch(32).prefetch(tf.data.experimental.AUTOTUNE)
+
+    # 加载 VGG 模型
+    vgg_model = tf.keras.applications.VGG16(weights='imagenet', include_top=False)
+
+    # 向量化图像
+    vectors = vgg_model.predict(dataset)
+    print(f'--------反回的vector数量为：{len(vectors)}')
+
+
+if __name__ == '__main__':
+    start = time.time()
+    tf_dataset_function('F:\\deep learning\\temp')
+    print(f'used time : {time.time() - start} s')

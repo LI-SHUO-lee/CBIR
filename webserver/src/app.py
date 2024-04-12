@@ -9,7 +9,7 @@ from service.train import do_train
 from service.search import do_search
 from service.count import do_count
 from service.delete import do_delete
-from service.theardpool import thread_runner, call_do_train
+from service.theardpool import thread_runner
 from preprocessor.vggnet import vgg_extract_feat
 from indexer.index import milvus_client, create_table, insert_vectors, delete_table, search_vectors, create_index
 from service.search import query_name_from_ids
@@ -18,21 +18,26 @@ from flask import Flask, request, send_file, jsonify
 from flask_restful import reqparse
 from werkzeug.utils import secure_filename
 from keras.applications.vgg16 import VGG16
+from keras.applications.vgg16 import preprocess_input as preprocess_input_vgg
+from keras.preprocessing import image
+import numpy as np
+from numpy import linalg as LA
 import tensorflow as tf
 from tensorflow.python.keras.backend import set_session
+from tensorflow.python.keras.models import load_model
 from diskcache import Cache
 import shutil
 
 # 取消证书认证，因为linux上总是出问题，所以加配置
 import ssl
 
-ssl._create_default_https_context = ssl._create_unverified_context
+#ssl._create_default_https_context = ssl._create_unverified_context
 
-config = tf.compat.v1.ConfigProto()
+config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 config.gpu_options.per_process_gpu_memory_fraction = 0.5
 global sess
-sess = tf.compat.v1.Session(config=config)
+sess = tf.Session(config=config)
 set_session(sess)
 
 app = Flask(__name__)
@@ -46,7 +51,7 @@ model = None
 
 def load_model():
     global graph
-    graph = tf.compat.v1.get_default_graph()
+    graph = tf.get_default_graph()
 
     global model
     model = VGG16(weights='imagenet',
