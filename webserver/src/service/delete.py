@@ -15,6 +15,8 @@ def do_delete(table_name):
     try:
         index_client = milvus_client()
         status = delete_table(index_client, table_name=table_name)
+        cache = Cache(default_cache_dir)
+        cache.clear()
         return status
     except Exception as e:
         logging.error(e)

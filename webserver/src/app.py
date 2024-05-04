@@ -1,7 +1,7 @@
 import os
 import os.path as path
 import logging
-from common.config import DATA_PATH, DEFAULT_TABLE
+from common.config import DATA_PATH, DEFAULT_TABLE, COMPUTE_VALUE
 from common.const import UPLOAD_PATH
 from common.const import input_shape
 from common.const import default_cache_dir
@@ -9,7 +9,7 @@ from service.train import do_train
 from service.search import do_search
 from service.count import do_count
 from service.delete import do_delete
-from service.theardpool import thread_runner
+from service.theardpool import thread_runner, thread_runner_fun
 from preprocessor.vggnet import vgg_extract_feat
 from indexer.index import milvus_client, create_table, insert_vectors, delete_table, search_vectors, create_index
 from service.search import query_name_from_ids
@@ -18,6 +18,7 @@ from flask import Flask, request, send_file, jsonify
 from flask_restful import reqparse
 from werkzeug.utils import secure_filename
 from keras.applications.vgg16 import VGG16
+# from encoder.encode import get_response_msg
 from keras.applications.vgg16 import preprocess_input as preprocess_input_vgg
 from keras.preprocessing import image
 import numpy as np
@@ -42,6 +43,7 @@ app.config['JSON_SORT_KEYS'] = False
 CORS(app)
 
 model = None
+
 
 def load_model():
     global graph
@@ -133,17 +135,52 @@ def do_search_api():
         filename = secure_filename(file.filename)
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(file_path)
-        res_id,res_distance = do_search(table_name, file_path, top_k, model, graph, sess)
+        res_id, res_distance = do_search(table_name, file_path, top_k, model, graph, sess)
         if isinstance(res_id, str):
             return res_id
-        res_img = [request.url_root +"data/" + x for x in res_id]
-        res = dict(zip(res_img,res_distance))
-        res = sorted(res.items(),key=lambda item:item[1])
+        res_img = [request.url_root + "data/" + x for x in res_id]
+        res = dict(zip(res_img, res_distance))
+        res = sorted(res.items(), key=lambda item: item[1])
         return jsonify(res), 200
     return "not found", 400
 
 
+@app.route('/api/v1/accuracy', methods=['POST'])
+def do_accuracy_api():
+    args = reqparse.RequestParser(). \
+        add_argument("search_path", type=str). \
+        parse_args()
+
+    search_path = args['search_path']
+    dirs = [f for f in os.listdir(search_path) if (f.endswith('.jpg') or f.endswith('.png'))]
+    table_name = DEFAULT_TABLE
+    count = 0
+    correct = 0
+    error = 0
+    try:
+        for index, file_name in enumerate(dirs):
+            count += 1
+            file_path = os.path.join(search_path, file_name)
+            res_id, res_distance = do_search(table_name, file_path, 1, model, graph, sess)
+            print(f'{count} is processing,{res_id} ---> {res_distance} --> {file_path}')
+            if res_id[0] == file_name:
+                correct += 1
+            else:
+                error += 1
+                print(f'the query and result is different:{file_name}')
+            if count in COMPUTE_VALUE or index == len(dirs) - 1:
+                accuracy = (correct / count) * 100
+                print(f'the correct num is {correct} and error num is {error}')
+                print(f'It has processed {count} images and the accuracy is {accuracy}%...')
+    except Exception as e:
+        print(f'{count} error，the massage is {format(e)}')
+
+    print('accuracy evaluate is end')
+    return 'ok'
+
 
 if __name__ == "__main__":
+    # thread_runner_fun(1, consumer_get_imgs_paths)
+    # thread_runner_fun(1, get_response_msg)
     load_model()
-    app.run(host="0.0.0.0")
+    app.run(host="0.0.0.0", debug=True)
