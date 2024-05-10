@@ -1,6 +1,6 @@
-import os
+import os, time
 import os.path as path
-import logging
+import logging as log
 from common.config import DATA_PATH, DEFAULT_TABLE, COMPUTE_VALUE
 from common.const import UPLOAD_PATH
 from common.const import input_shape
@@ -29,7 +29,12 @@ from tensorflow.python.keras.models import load_model
 from diskcache import Cache
 import shutil
 
-config = tf.ConfigProto()
+config = tf.ConfigProto(
+    # device_count={"CPU": 4},
+    # inter_op_parallelism_threads=1,
+    # intra_op_parallelism_threads=4,
+    # log_device_placement=True
+)
 config.gpu_options.allow_growth = True
 config.gpu_options.per_process_gpu_memory_fraction = 0.5
 global sess
@@ -82,12 +87,12 @@ def do_delete_api():
         add_argument('Table', type=str). \
         parse_args()
     table_name = args['Table']
-    print("delete table.")
+    log.info("delete table.")
     status = do_delete(table_name)
     try:
         shutil.rmtree(DATA_PATH)
     except:
-        print("cannot remove", DATA_PATH)
+        log.error("cannot remove {DATA_PATH}")
     return "{}".format(status)
 
 
@@ -104,6 +109,10 @@ def do_count_api():
 @app.route('/api/v1/process')
 def thread_status_api():
     cache = Cache(default_cache_dir)
+
+    if not ('current' in cache or 'total' in cache):
+        return "current: {}, total: {}".format(0, 0)
+
     return "current: {}, total: {}".format(cache['current'], cache['total'])
 
 
@@ -135,7 +144,11 @@ def do_search_api():
         filename = secure_filename(file.filename)
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(file_path)
+        start = time.time()
         res_id, res_distance = do_search(table_name, file_path, top_k, model, graph, sess)
+        time_cost = (time.time() - start)
+        log.info(f'The search process cost {time_cost:.2f} seconds...')
+        print(f'The search process cost {time_cost:.2f} seconds...')
         if isinstance(res_id, str):
             return res_id
         res_img = [request.url_root + "data/" + x for x in res_id]
@@ -162,20 +175,20 @@ def do_accuracy_api():
             count += 1
             file_path = os.path.join(search_path, file_name)
             res_id, res_distance = do_search(table_name, file_path, 1, model, graph, sess)
-            print(f'{count} is processing,{res_id} ---> {res_distance} --> {file_path}')
+            log.info(f'{count} is processing,{res_id} ---> {res_distance} --> {file_path}')
             if res_id[0] == file_name:
                 correct += 1
             else:
                 error += 1
-                print(f'the query and result is different:{file_name}')
+                log.error(f'the query and result is different:{file_name}')
             if count in COMPUTE_VALUE or index == len(dirs) - 1:
                 accuracy = (correct / count) * 100
-                print(f'the correct num is {correct} and error num is {error}')
-                print(f'It has processed {count} images and the accuracy is {accuracy}%...')
+                log.info(f'the correct num is {correct} and error num is {error}')
+                log.info(f'It has processed {count} images and the accuracy is {accuracy}%...')
     except Exception as e:
-        print(f'{count} error，the massage is {format(e)}')
+        log.error(f'{count} error，the massage is {format(e)}')
 
-    print('accuracy evaluate is end')
+    log.info('accuracy evaluate is end')
     return 'ok'
 
 

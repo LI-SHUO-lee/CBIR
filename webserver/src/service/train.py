@@ -6,7 +6,8 @@ from common.const import default_cache_dir
 from encoder.encode import feature_extract
 from preprocessor.vggnet import VGGNet
 from diskcache import Cache
-from indexer.index import milvus_client, create_table, insert_vectors, delete_table, search_vectors, create_index,has_table
+from indexer.index import milvus_client, create_table, insert_vectors, delete_table, search_vectors, create_index, \
+    has_table
 
 
 def do_train(table_name, database_path):
@@ -20,7 +21,7 @@ def do_train(table_name, database_path):
         # time.sleep(1)
         status, ok = has_table(index_client, table_name)
         if not ok:
-            print("create table.")
+            logging.info("create table.")
             create_table(index_client, table_name=table_name)
         print("insert into:", table_name)
         status, ids = insert_vectors(index_client, table_name, vectors)
@@ -28,7 +29,7 @@ def do_train(table_name, database_path):
         for i in range(len(names)):
             # cache[names[i]] = ids[i]
             cache[ids[i]] = names[i]
-        print("Train finished")
+        logging.info("Train finished")
         return "Train finished"
     except Exception as e:
         logging.error(e)

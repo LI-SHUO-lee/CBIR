@@ -1,4 +1,5 @@
 import os, time
+import logging
 import numpy as np
 from common.config import DATA_PATH as database_path
 from common.config import COMPUTE_VALUE
@@ -24,10 +25,10 @@ def feature_extract(database_path, model):
         total = len(img_list)
         cache['current'] = current
         cache['total'] = total
-        print("extracting feature from image No. %d , %d images in total" % (current, total))
+        logging.info("extracting feature from image No. %d , %d images in total" % (current, total))
         if current in COMPUTE_VALUE or i == len(img_list) - 1:
             time_cost = (time.time() - start)
-            print(f'It has processed {current} images and the time cost {time_cost:.2f} seconds...')
+            logging.info(f'It has processed {current} images and the time cost {time_cost:.2f} seconds...')
     #    feats = np.array(feats)
     return feats, names
 
