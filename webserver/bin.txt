@@ -1,0 +1,25 @@
+docker build --no-cache -t your_image_name .
+
+# 启动mivls命令
+sudo docker run -d --name milvus_cpu \
+-p 19530:19530 \
+-p 19121:19121 \
+-v /home/$USER/module/milvus/db:/var/lib/milvus/db \
+-v /home/$USER/module/milvus/conf:/var/lib/milvus/conf \
+-v /home/$USER/module/milvus/logs:/var/lib/milvus/logs \
+-v /home/$USER/module/milvus/wal:/var/lib/milvus/wal \
+milvusdb/milvus:1.0.0-cpu-d030521-1ea92e
+
+
+# 启动web
+sudo docker run -d --name search_images_web \
+-v /home/lishuo/module/milvus/data:/tmp/pic1 \
+-p 35000:5000 \
+-e "DATA_PATH=/tmp/images-data" \
+-e "MILVUS_HOST=192.168.1.93" \
+milvusbootcamp/pic-search-webserver:1.0
+
+# 启动client
+sudo docker run --name search_images_client -d --rm -p 8001:80 \
+-e API_URL=http://192.168.1.93:35000 \
+milvusbootcamp/pic-search-webclient:1.0

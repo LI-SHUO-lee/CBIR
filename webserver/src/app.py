@@ -110,8 +110,8 @@ def do_count_api():
 def thread_status_api():
     cache = Cache(default_cache_dir)
 
-    if not ('current' in cache or 'total' in cache):
-        return "current: {}, total: {}".format(0, 0)
+    if not 'current' in cache :
+        return "current: {}, total: {}".format(1, 0)
 
     return "current: {}, total: {}".format(cache['current'], cache['total'])
 
